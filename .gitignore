@@ -1,0 +1,12 @@
+__pycacche__
+*.pyc
+.coverage
+.pytest_cache
+.ruff_cache
+
+*.swp
+*~
+
+.vscode/
+.pdm-python
+
