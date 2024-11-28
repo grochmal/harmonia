@@ -1,4 +1,3 @@
-import os
 import sys
 from collections import defaultdict
 from datetime import UTC, datetime
@@ -8,16 +7,7 @@ import smart_open
 from pydantic import BaseModel
 from typing_extensions import Annotated
 
-from harmonia.base.validators import NAME, SCHEME, VERSION
-
-
-def makedirs(uri: str):
-    if not uri.startswith("file://"):
-        # remote stores do not require parent dir handling
-        return
-    dirs, _ = os.path.split(uri[len("file://") :])
-    if dirs:
-        os.makedirs(dirs, exist_ok=True)
+from harmonia.base.validators import NAME, SCHEME, VERSION, makedirs
 
 
 class LogProvider:
@@ -47,7 +37,7 @@ class LogProvider:
         self.close()
 
 
-class LogProviderFactory(BaseModel):
+class LogProviderFactory(BaseModel, frozen=True):
     uri: Annotated[str, NAME, VERSION, SCHEME]
 
     def build(self, version: str, name: str) -> LogProvider:
@@ -117,7 +107,7 @@ class MetricProvider:
         return self._metrics[metric]
 
 
-class MetricFactory(BaseModel):
+class MetricFactory(BaseModel, frozen=True):
     uri: Annotated[str, NAME, VERSION, SCHEME]
 
     def build(

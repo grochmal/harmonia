@@ -1,4 +1,15 @@
+import os
+
 from pydantic.functional_validators import AfterValidator
+
+
+def makedirs(uri: str):
+    if not uri.startswith("file://"):
+        # remote stores do not require parent dir handling
+        return
+    dirs, _ = os.path.split(uri[len("file://") :])
+    if dirs:
+        os.makedirs(dirs, exist_ok=True)
 
 
 def has_name(uri: str) -> str:
@@ -16,7 +27,7 @@ def has_scheme(uri: str) -> str:
     return uri
 
 
-def is_file_scheme(uri: str):
+def is_file_scheme(uri: str) -> str:
     assert uri.startswith("file://"), "Local URI must start with 'file://'"
     return uri
 
