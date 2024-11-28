@@ -1,12 +1,15 @@
 __pycacche__
 *.pyc
-.coverage
-.pytest_cache
-.ruff_cache
+
+/.coverage
+/.pytest_cache
+/.ruff_cache
+/htmlcov/
+/local/
 
 *.swp
 *~
 
-.vscode/
-.pdm-python
+/.vscode/
+/.pdm-python
 
