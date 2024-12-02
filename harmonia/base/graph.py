@@ -1,12 +1,13 @@
 import os
 import subprocess
+from collections import defaultdict
 from typing import Annotated, Any, Self
 
 from pydantic import BaseModel, model_validator
-from pydantic.functional_validators import AfterValidator, BeforeValidator
+from pydantic.functional_validators import BeforeValidator
 
 from harmonia.base import log
-from harmonia.base.validators import FILE_SCHEME, SCHEME, VERSION
+from harmonia.base.validators import FILE_SCHEME, SCHEME, UNIQUE_ELEMENTS, VERSION
 
 HEARTBEAT_TIMEOUT = 0.1
 
@@ -21,6 +22,9 @@ class Node(BaseModel, frozen=True):
     name: str
     cmd: tuple[str, ...]
     log_provider_factory: log.LogProviderFactory
+
+    def __lt__(self, other):
+        return self.name < other.name
 
     def __str__(self: Self) -> str:
         return f"{self.name} {self.cmd}"
@@ -52,6 +56,9 @@ class Edge(BaseModel, frozen=True):
 
     def __eq__(self, other):
         return self.uri == other.uri
+
+    def __lt__(self, other):
+        return self.uri < other.uri
 
     def __str__(self):
         return f"{self.uri}"
@@ -90,18 +97,29 @@ class Process(BaseModel, frozen=True):
     options: Annotated[tuple[tuple[str, str | Edge], ...], IMMUTABLE_DICT] = ()
     input_edges: tuple[Edge, ...] = ()
     output_edges: tuple[Edge, ...] = ()
+    strip_scheme: bool = False
 
     @model_validator(mode="after")
     def validate(self) -> Self:
         assert len(self.output_edges) > 0, "Process has no outputs"
         return self
 
+    def __lt__(self, other):
+        return self.node < other.node
 
-class CompiledGraph(BaseModel):
-    order: list[set[Process]]
-    input_edges: set[Edge]
+
+class CompiledGraph(BaseModel, frozen=True):
+    name: str
+    order: Annotated[tuple[Process, ...], UNIQUE_ELEMENTS]
+    input_edges: Annotated[tuple[Edge, ...], UNIQUE_ELEMENTS]
+
+    def disjoint(self, initial_edge: Edge) -> bool:
+        edges = set()
+        processes = set()
+        return edges == processes
 
     def run(self, version: str):
+        # TODO full rework
         for processes in self.order:
             for process in self.processes:
                 process.node.run(
@@ -113,13 +131,6 @@ class CompiledGraph(BaseModel):
                 )
 
 
-def ensure_unique_elements(elements: tuple[Process | Edge, ...]):
-    return tuple(set(elements))
-
-
-UNIQUE_ELEMENTS = AfterValidator(ensure_unique_elements)
-
-
 class Graph(BaseModel, frozen=True):
     processes: Annotated[tuple[Process, ...], UNIQUE_ELEMENTS]
     edges: Annotated[tuple[Edge, ...], UNIQUE_ELEMENTS]
@@ -127,6 +138,7 @@ class Graph(BaseModel, frozen=True):
     @model_validator(mode="after")
     def validate(self) -> Self:
         io_edges = []
+        output_edges = defaultdict(list)
         for process in self.processes:
             edges = (
                 list(process.input_edges)
@@ -137,8 +149,15 @@ class Graph(BaseModel, frozen=True):
                 assert edge in self.edges, f"Edge {edge} not found in graph"
             io_edges.extend(edges)
 
+            for edge in process.output_edges:
+                output_edges[edge].append(process)
+
         for edge in self.edges:
             assert edge in io_edges, f"Edge {edge} not attached to a process"
+        for edge, processes in output_edges.items():
+            assert (
+                len(processes) == 1
+            ), f"Output Edge {edge} attached to multiple processes: {processes}"
         self.full_io()
         return self
 
@@ -159,32 +178,30 @@ class Graph(BaseModel, frozen=True):
 
     def compile_graph(
         self,
+        name: str,
         inputs: list[Edge],
         middle: list[Edge],
         outputs: list[Edge],
     ) -> tuple[CompiledGraph, list[Edge]]:
         order = []
-        processes = set(self.processes)
+        output_edges = {}  # precompile mapping - we already validated it
+        for process in self.processes:
+            for edge in process.output_edges:
+                output_edges[edge] = process
+
         cur_inputs = set(inputs)
         cur_middle = set(middle)
         cur_outputs = set(outputs)
-        while processes:
-            step = []
-            new_inputs = []
-            for process in processes:
-                if all([edge in inputs for edge in process.input_edges]):
-                    step.append(process)
-                    new_inputs.extend(process.output_edges)
-            if len(step) == 0:
-                # either something went terribly wrong
-                # or we got a disjoint graph,
-                # let the caller deal with this
-                break
-            step = set(step)
-            new_inputs = set(new_inputs)
-            processes -= step
-            cur_inputs += new_inputs
-            cur_middle -= new_inputs
-            cur_outputs -= new_inputs
-            order.append(step)
-        return CompiledGraph(order=order, input_edges=inputs), cur_outputs
+        assert cur_inputs & cur_middle & cur_outputs == set(), "Edges are not unique"
+        while cur_outputs:
+            new_outputs = set()
+            for edge in cur_outputs:
+                to_run = output_edges[edge]
+                if to_run in order:
+                    # already accountde for due to another output edge
+                    continue
+                order.append(to_run)
+                required = set(to_run.input_edges) & cur_middle
+                new_outputs |= required
+            cur_outputs = new_outputs
+        return CompiledGraph(name=name, order=order, input_edges=inputs)

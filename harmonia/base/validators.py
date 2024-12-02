@@ -1,6 +1,15 @@
 import os
+from typing import TypeVar
 
 from pydantic.functional_validators import AfterValidator
+
+T = TypeVar("T")
+
+
+def ensure_unique_elements(elements: tuple[T, ...]) -> tuple[T, ...]:
+    unique_elements = set(elements)
+    assert len(unique_elements) == len(elements), "Elements must be unique"
+    return tuple(sorted(unique_elements))
 
 
 def makedirs(uri: str):
@@ -36,3 +45,4 @@ NAME = AfterValidator(has_name)
 VERSION = AfterValidator(has_version)
 SCHEME = AfterValidator(has_scheme)
 FILE_SCHEME = AfterValidator(is_file_scheme)
+UNIQUE_ELEMENTS = AfterValidator(ensure_unique_elements)
