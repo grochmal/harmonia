@@ -175,18 +175,21 @@ def test_graph_creation_validates(log_provider_factory: log.LogProviderFactory):
         output_edges=[love],
     )
     graph.Graph(
+        name="rock and roll",
         processes=[reggae, metal],
         edges=[guitar, song, love],
     )
 
     with pytest.raises(ValidationError):
         graph.Graph(
+            name="rock and roll",
             processes=[reggae, metal],
             edges=[guitar, song],
         )
 
     with pytest.raises(ValidationError):
         graph.Graph(
+            name="rock and roll",
             processes=[reggae],
             edges=[guitar, song, love],
         )
@@ -215,10 +218,12 @@ def test_disjoint_graph_is_invalid(log_provider_factory: log.LogProviderFactory)
         input_edges=[guitar],
         output_edges=[song],
     )
-    graph.Graph(
-        processes=[reggae, metal],
-        edges=[flute, guitar, lyrics, song],
-    )
+    with pytest.raises(ValidationError):
+        graph.Graph(
+            name="rock and roll",
+            processes=[reggae, metal],
+            edges=[flute, guitar, lyrics, song],
+        )
 
 
 def test_graph_can_serialised(swan_lake_graph: graph.Graph):
@@ -359,6 +364,7 @@ def test_compile_big_subgraph(
         output_edges=[e_pass_d_action],
     )
     g = graph.Graph(
+        name="swan-lake",
         processes=[
             p_waltz_no_2,
             p_scene_pas_de_trois,

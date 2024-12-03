@@ -113,10 +113,33 @@ class CompiledGraph(BaseModel, frozen=True):
     order: Annotated[tuple[Process, ...], UNIQUE_ELEMENTS]
     input_edges: Annotated[tuple[Edge, ...], UNIQUE_ELEMENTS]
 
-    def disjoint(self, initial_edge: Edge) -> bool:
-        edges = set()
-        processes = set()
-        return edges == processes
+    def is_disjoint(self, initial_edge: Edge) -> bool:
+        output_edges = defaultdict(list)
+        input_edges = defaultdict(list)
+        for process in self.order:
+            for edge in process.output_edges:
+                output_edges[edge].append(process)
+            for edge in process.input_edges:
+                input_edges[edge].append(process)
+
+        all_processes = set()
+        all_edges = set()
+        cur_edges = {initial_edge}
+        while cur_edges:  # walk the graph
+            cur_processes = set(
+                [p for edge in cur_edges for p in output_edges[edge]]
+                + [p for edge in cur_edges for p in input_edges[edge]]
+            )
+            cur_processes -= all_processes
+            all_processes |= cur_processes
+            all_edges |= cur_edges
+            cur_edges = set()
+            for process in cur_processes:
+                cur_edges |= set(process.output_edges)
+                cur_edges |= set(process.input_edges)
+            cur_edges -= all_edges
+
+        return len(all_processes) != len(self.order)
 
     def run(self, version: str):
         # TODO full rework
@@ -132,6 +155,7 @@ class CompiledGraph(BaseModel, frozen=True):
 
 
 class Graph(BaseModel, frozen=True):
+    name: str
     processes: Annotated[tuple[Process, ...], UNIQUE_ELEMENTS]
     edges: Annotated[tuple[Edge, ...], UNIQUE_ELEMENTS]
 
@@ -158,7 +182,9 @@ class Graph(BaseModel, frozen=True):
             assert (
                 len(processes) == 1
             ), f"Output Edge {edge} attached to multiple processes: {processes}"
-        self.full_io()
+        inputs, middle, outputs = self.full_io()
+        compiled = self.compile_graph("anon", inputs, middle, outputs)
+        assert not compiled.is_disjoint(outputs[0]), "Graph cannot be disjoint"
         return self
 
     def full_io(self) -> tuple[list[Edge], list[Edge], list[Edge]]:

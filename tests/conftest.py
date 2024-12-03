@@ -138,6 +138,7 @@ def swan_lake_graph(log_provider_factory: log.LogProvider) -> graph.Graph:
         output_edges=[e_sujet_andante_finale],
     )
     return graph.Graph(
+        name="swan-lake",
         processes=[
             p_scene_no_1,
             p_waltz_no_2,
