@@ -2,10 +2,10 @@ import sys
 from collections import defaultdict
 from datetime import UTC, datetime
 from io import StringIO
+from typing import Annotated
 
 import smart_open
 from pydantic import BaseModel
-from typing_extensions import Annotated
 
 from harmonia.base.validators import NAME, SCHEME, VERSION, makedirs
 
@@ -38,7 +38,7 @@ class LogProvider:
 
 
 class LogProviderFactory(BaseModel, frozen=True):
-    uri: Annotated[str, NAME, VERSION, SCHEME]
+    uri: Annotated[str, NAME, VERSION, SCHEME] = "file://./logs/{version}/{name}.log"
 
     def build(self, version: str, name: str) -> LogProvider:
         return LogProvider(
@@ -108,7 +108,9 @@ class MetricProvider:
 
 
 class MetricFactory(BaseModel, frozen=True):
-    uri: Annotated[str, NAME, VERSION, SCHEME]
+    uri: Annotated[str, NAME, VERSION, SCHEME] = (
+        "file://./logs/{version}/{name}.metrics"
+    )
 
     def build(
         self,
@@ -126,5 +128,5 @@ TEST_METRIC = MetricProvider(log_provider=TEST_LOGGER)
 
 
 # Some defaults for a local run
-DEFAULT_LOG_FACTORY = LogProviderFactory(uri="file://./logs/{version}/{name}.log")
-DEFAULT_METRIC_FACTORY = MetricFactory(uri="file://./logs/{version}/{name}.metrics")
+DEFAULT_LOG_FACTORY = LogProviderFactory()
+DEFAULT_METRIC_FACTORY = MetricFactory()
