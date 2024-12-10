@@ -31,16 +31,6 @@ def has_version(uri: str) -> str:
     return uri
 
 
-def has_graph(uri: str) -> str:
-    assert "{graph}" in uri, "URI must contain a graph indicator ({graph})"
-    return uri
-
-
-def has_compiled(uri: str) -> str:
-    assert "{compiled}" in uri, "URI must contain a compiled indicator ({compiled})"
-    return uri
-
-
 def has_scheme(uri: str) -> str:
     assert "://" in uri, "URI must contain a protocol"
     return uri
@@ -53,8 +43,6 @@ def is_file_scheme(uri: str) -> str:
 
 NAME = AfterValidator(has_name)
 VERSION = AfterValidator(has_version)
-GRAPH = AfterValidator(has_graph)
-COMPILED = AfterValidator(has_compiled)
 SCHEME = AfterValidator(has_scheme)
 FILE_SCHEME = AfterValidator(is_file_scheme)
 UNIQUE_ELEMENTS = AfterValidator(ensure_unique_elements)
