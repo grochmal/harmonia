@@ -1,0 +1,74 @@
+[project]
+name = "harmonia"
+version = "0.1.0"
+description = "Orchestrator Framework"
+authors = [
+]
+dependencies = [
+    "pydantic",
+    "pyarrow",
+    "smart-open",
+    "bokeh",  # needed to display dask UI in local notebooks
+]
+requires-python = ">=3.12"
+readme = "README.md"
+license = {text = "MIT"}
+
+[project.optional-dependencies]
+dask = [
+    "cloudpickle",
+    "dask",
+]
+
+[tool.isort]
+profile = "black"
+known_first_party = []
+
+[tool.docformatter]
+recursive = true
+black = true
+
+[tool.pytest.ini_options]
+addopts = "--cov=harmonia --cov-branch --cov-report=term-missing --cov-report=html"
+testpaths = ["tests"]
+
+[tool.ruff]
+lint.select = [
+    "E", # Pycodestyle
+    "ERA", # Eradicate
+    "F", # Pyflakes
+    "T20", # Print
+    "TRY002", # Create own exception
+    "TRY004", # Type check without TypeError
+    "TRY201", # verbose raise
+    "TRY301", # raise with try
+    "TRY302", # useless try except
+    "TRY400", # logging.error used over logging.exception
+    "TRY401", # verbose log message
+    "Q", # Quotes
+    "DTZ", # Naive datetime
+]
+
+[tool.pyright]
+include = ["harmonia", "tests"]
+
+[tool.pdm]
+[tool.pdm.dev-dependencies]
+dev = [
+    "pytest",
+    "pytest-cov",
+    "pytest-cases",
+    "ruff",
+    "jupyter==1.0.0",
+]
+
+[tool.pdm.build]
+source-includes = ["pdm.lock"]
+
+[build-system]
+requires = ["pdm-backend"]
+build-backend = "pdm.backend"
+
+[tool.setuptools]
+packages = ["harmonia"]
+
